@@ -9,21 +9,29 @@
  *   3. SLIDESHOW_START_SECONDS → video fades out, split slideshow takes over
  *   4. Zero                   → last picture fills the screen, title fades in
  *
- * Each slide of the slideshow runs a two-phase cycle:
+ * The slideshow is a vertical stack. Almost every slide is an ordinary one:
+ * an even split, picture on one side and the number on the other, holding for
+ * SLIDE_SECONDS before the stack slides up to the next.
  *
- *   ┌──────────┬─┐  WIDE     picture takes IMAGE_WIDE_PERCENT of the width,
- *   │  IMAGE   │5│             an edge of the number showing beside it.
- *   └──────────┴─┘             Holds WIDE_HOLD_SECONDS, cycling
- *                              WIDE_IMAGE_COUNT pictures.
+ *   ┌─────┬──────┐  holds SLIDE_SECONDS, then slides up.
+ *   │ IMG │  54  │  Sides alternate on each slide.
+ *   └─────┴──────┘
+ *
+ * At the few moments listed in HORIZONTAL_AT_SECONDS, one slide does something
+ * different instead — it arrives wide and opens sideways:
+ *
+ *   ┌──────────┬─┐  WIDE   picture takes IMAGE_WIDE_PERCENT of the width,
+ *   │  IMAGE   │5│           an edge of the number showing beside it.
+ *   └──────────┴─┘           Holds WIDE_HOLD_SECONDS, cycling
+ *                            WIDE_IMAGE_COUNT pictures.
  *          ↓ opens sideways over HORIZONTAL_TRANSITION_MS
- *   ┌─────┬──────┐  EVEN     even split, number fully revealed.
- *   │ IMG │  54  │             Holds EVEN_HOLD_SECONDS, cycling
- *   └─────┴──────┘             EVEN_IMAGE_COUNT more pictures.
- *          ↓ slides up over SLIDE_TRANSITION_MS
- *        next slide, picture on the opposite side
+ *   ┌─────┬──────┐  EVEN   even split, number fully revealed.
+ *   │ IMG │  54  │           Holds EVEN_HOLD_SECONDS, cycling
+ *   └─────┴──────┘           EVEN_IMAGE_COUNT more pictures.
+ *          ↓ then the ordinary vertical slides resume
  *
- * So one slide lasts WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS, and the number of
- * slides in the final minute is SLIDESHOW_START_SECONDS divided by that.
+ * The vertical stack pauses while one of these plays out, so a wide slide
+ * lasts WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS rather than SLIDE_SECONDS.
  *
  * To rehearse the last minute without waiting, add `?seconds=70` to the URL.
  */
@@ -51,21 +59,45 @@ export const COUNTDOWN_SECONDS = 25 * 60;
 export const SLIDESHOW_START_SECONDS = 60;
 
 /**
- * How long the wide phase holds — picture dominant, number reduced to an edge —
- * before it opens out to an even split.
+ * How long an ordinary slide holds before the stack moves up to the next.
+ *
+ * Higher → slower, calmer slideshow, fewer slides, each picture gets longer.
+ * Lower  → busier and more urgent, more slides, each picture gets a glance.
+ */
+export const SLIDE_SECONDS = 3;
+
+/**
+ * Seconds remaining at which a slide does the sideways reveal instead of
+ * behaving normally. Everything not listed here is an ordinary slide.
+ *
+ * More entries → more reveals, less of the steady vertical rhythm.
+ * Fewer        → the reveal stays a rare punctuation mark.
+ *
+ * Each reveal occupies WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS (10s as set), so
+ * space entries at least that far apart — a mark landing inside a reveal
+ * already running is skipped, and you would silently get fewer than you listed.
+ *
+ * A reveal starts at the first slide boundary at or before the mark, so the
+ * timing is approximate to within one SLIDE_SECONDS.
+ */
+export const HORIZONTAL_AT_SECONDS = [50, 38, 28];
+
+/**
+ * On a reveal slide only: how long the wide phase holds — picture dominant,
+ * number reduced to an edge — before it opens out to an even split.
  *
  * Higher → longer to enjoy the big picture, but the number stays clipped for
- *          longer and the whole cycle slows down.
- * Lower  → the number is revealed sooner and more often.
+ *          longer and the reveal takes up more of the final minute.
+ * Lower  → the number is revealed sooner.
  */
 export const WIDE_HOLD_SECONDS = 5;
 
 /**
- * How long the even 50/50 split holds after opening, before the stack slides
- * up to the next slide.
+ * On a reveal slide only: how long the even 50/50 split holds after opening,
+ * before the ordinary vertical slides resume.
  *
- * Higher → the number is fully readable for longer, fewer slides overall.
- * Lower  → moves on quickly, more slides in the final minute.
+ * Higher → the number is fully readable for longer after each reveal.
+ * Lower  → returns to the normal rhythm sooner.
  */
 export const EVEN_HOLD_SECONDS = 5;
 
@@ -136,8 +168,8 @@ export const SLIDE_HEIGHT_VH = 88;
  * Higher → slower, more graceful movement (2000 is a long, cinematic glide).
  * Lower  → snappier (300 feels like a jump cut).
  *
- * Keep this comfortably below EVEN_HOLD_SECONDS × 1000, or the next move
- * starts before the last one has settled.
+ * Keep this comfortably below SLIDE_SECONDS × 1000, or the next move starts
+ * before the last one has settled.
  */
 export const SLIDE_TRANSITION_MS = 1000;
 

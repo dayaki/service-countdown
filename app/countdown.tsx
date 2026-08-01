@@ -5,6 +5,7 @@ import {
   EVEN_HOLD_SECONDS,
   EVEN_IMAGE_COUNT,
   FINAL_TITLE,
+  HORIZONTAL_AT_SECONDS,
   HORIZONTAL_TRANSITION_MS,
   IMAGE_FADE_MS,
   IMAGE_WIDE_PERCENT,
@@ -14,6 +15,7 @@ import {
   SLIDE_DIM,
   SLIDE_EASING,
   SLIDE_HEIGHT_VH,
+  SLIDE_SECONDS,
   SLIDE_TRANSITION_MS,
   SLIDESHOW_START_SECONDS,
   SUBLABEL,
@@ -22,43 +24,95 @@ import {
 } from "./config";
 import styles from "./countdown.module.css";
 
-/** One slide is a wide phase followed by an even phase. */
-const CYCLE_MS = (WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS) * 1000;
 const WIDE_MS = WIDE_HOLD_SECONDS * 1000;
-const IMAGES_PER_SLIDE = WIDE_IMAGE_COUNT + EVEN_IMAGE_COUNT;
-
-/**
- * Slides needed to carry the countdown from SLIDESHOW_START_SECONDS to zero,
- * plus one extra that only ever exists to be the strip peeking below the last
- * real slide.
- */
-const SLIDE_COUNT =
-  Math.ceil((SLIDESHOW_START_SECONDS * 1000) / CYCLE_MS) + 1;
+const REVEAL_SECONDS = WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS;
+const REVEAL_MS = REVEAL_SECONDS * 1000;
 
 type Slide = {
-  /** WIDE_IMAGE_COUNT for the wide phase, then EVEN_IMAGE_COUNT after it. */
+  /**
+   * One picture for an ordinary slide; WIDE_IMAGE_COUNT + EVEN_IMAGE_COUNT for
+   * a reveal, which cycles through them.
+   */
   images: string[];
   color: string;
   /** Slides alternate which side the picture sits on. */
   imageFirst: boolean;
+  /** True for the few slides listed in HORIZONTAL_AT_SECONDS. */
+  reveal: boolean;
+  /** Where this slide sits on the clock, in ms since the slideshow began. */
+  startMs: number;
+  endMs: number;
 };
 
 /**
- * Which picture the active slide is showing, as an index into slide.images.
- * The wide phase divides its hold between WIDE_IMAGE_COUNT pictures and the
- * even phase divides its own between the rest.
+ * Lays out the whole run before it starts.
+ *
+ * Slides are ordinary and SLIDE_SECONDS long unless a mark from
+ * HORIZONTAL_AT_SECONDS falls inside their window, in which case that slide
+ * becomes a reveal and runs for REVEAL_SECONDS instead — the vertical stack
+ * holds still while it plays out.
+ *
+ * A mark swallowed by a reveal already running is dropped rather than queued,
+ * since stacking two reveals back to back defeats the point of them being
+ * occasional.
  */
-function imageSlotAt(withinCycleMs: number) {
-  if (withinCycleMs < WIDE_MS) {
-    const each = WIDE_MS / WIDE_IMAGE_COUNT;
-    return Math.min(WIDE_IMAGE_COUNT - 1, Math.floor(withinCycleMs / each));
+function buildTimeline() {
+  const marks = [...new Set(HORIZONTAL_AT_SECONDS)]
+    .filter((mark) => mark > 0 && mark <= SLIDESHOW_START_SECONDS)
+    .sort((a, b) => b - a);
+
+  const out: { reveal: boolean; startMs: number; endMs: number }[] = [];
+  let remaining = SLIDESHOW_START_SECONDS;
+  let used = 0;
+
+  while (remaining > 0 && out.length < 200) {
+    const windowEnd = remaining - SLIDE_SECONDS;
+    const hit = marks.some(
+      (mark) => mark <= remaining && mark > windowEnd && mark <= remaining,
+    );
+
+    const duration = hit
+      ? Math.min(REVEAL_SECONDS, remaining)
+      : Math.min(SLIDE_SECONDS, remaining);
+
+    const startMs = used * 1000;
+    used += duration;
+    out.push({ reveal: hit, startMs, endMs: used * 1000 });
+
+    remaining -= duration;
+    // Drop any marks this slide has now passed, so a reveal cannot immediately
+    // retrigger on a mark it just covered.
+    for (let i = marks.length - 1; i >= 0; i--) {
+      if (marks[i] > remaining) marks.splice(i, 1);
+    }
   }
 
-  const each = (CYCLE_MS - WIDE_MS) / EVEN_IMAGE_COUNT;
-  const intoEven = withinCycleMs - WIDE_MS;
+  // One extra so there is always a slide peeking below the last real one.
+  const last = out[out.length - 1];
+  out.push({
+    reveal: false,
+    startMs: last?.endMs ?? 0,
+    endMs: (last?.endMs ?? 0) + SLIDE_SECONDS * 1000,
+  });
+
+  return out;
+}
+
+/**
+ * Which picture a reveal slide is showing, as an index into slide.images. The
+ * wide phase divides its hold between WIDE_IMAGE_COUNT pictures and the even
+ * phase divides its own between the rest.
+ */
+function imageSlotAt(withinMs: number) {
+  if (withinMs < WIDE_MS) {
+    const each = WIDE_MS / WIDE_IMAGE_COUNT;
+    return Math.min(WIDE_IMAGE_COUNT - 1, Math.floor(withinMs / each));
+  }
+
+  const each = (REVEAL_MS - WIDE_MS) / EVEN_IMAGE_COUNT;
   return (
     WIDE_IMAGE_COUNT +
-    Math.min(EVEN_IMAGE_COUNT - 1, Math.floor(intoEven / each))
+    Math.min(EVEN_IMAGE_COUNT - 1, Math.floor((withinMs - WIDE_MS) / each))
   );
 }
 
@@ -112,9 +166,12 @@ function buildSlides(images: string[]): Slide[] {
   const drawImage = makeBag(images);
   const drawColor = makeBag(SLIDE_COLORS);
 
-  return Array.from({ length: SLIDE_COUNT }, (_, i) => ({
+  return buildTimeline().map((timing, i) => ({
+    ...timing,
+    // A reveal needs a picture for every slot it cycles through; an ordinary
+    // slide needs one.
     images: Array.from(
-      { length: IMAGES_PER_SLIDE },
+      { length: timing.reveal ? WIDE_IMAGE_COUNT + EVEN_IMAGE_COUNT : 1 },
       () => drawImage() ?? "",
     ).filter(Boolean),
     color: drawColor() ?? SLIDE_COLORS[0],
@@ -240,20 +297,24 @@ export default function Countdown({
 
   // Clamped to the last real slide so the trailing peek slide is never scrolled
   // to — it exists only to fill the strip below.
-  const cycleIndex = Math.floor(slideshowMs / CYCLE_MS);
-  const withinCycleMs = slideshowMs - cycleIndex * CYCLE_MS;
+  // The last entry is the peek slide, which is never scrolled to.
+  const lastReal = slides ? slides.length - 2 : 0;
+  const found = slides?.findIndex((slide) => slideshowMs < slide.endMs) ?? 0;
+  const slideIndex = Math.min(lastReal, found < 0 ? lastReal : found);
 
-  const slideIndex = Math.min(SLIDE_COUNT - 2, Math.max(0, cycleIndex));
-  const activeIsWide = withinCycleMs < WIDE_MS;
-  const imageSlot = imageSlotAt(withinCycleMs);
+  const active = slides?.[slideIndex];
+  const withinMs = active ? slideshowMs - active.startMs : 0;
+  const activeIsWide = !!active?.reveal && withinMs < WIDE_MS;
+  const imageSlot = active?.reveal ? imageSlotAt(withinMs) : 0;
 
   /**
-   * Slides above the active one have already opened and stay open; slides
-   * below have not opened yet. Only the active slide moves, so a slide never
-   * re-narrows as it leaves.
+   * Ordinary slides are always an even split. A reveal waits wide, opens when
+   * it becomes active, and stays open once past — so it never re-narrows on
+   * its way off screen.
    */
-  const imageShareFor = (i: number) => {
+  const imageShareFor = (slide: Slide, i: number) => {
     if (ended) return 100;
+    if (!slide.reveal) return 50;
     if (i < slideIndex) return 50;
     if (i === slideIndex && !activeIsWide) return 50;
     return IMAGE_WIDE_PERCENT;
@@ -303,7 +364,7 @@ export default function Countdown({
               style={
                 {
                   flexDirection: slide.imageFirst ? "row" : "row-reverse",
-                  "--image-share": `${imageShareFor(i)}%`,
+                  "--image-share": `${imageShareFor(slide, i)}%`,
                 } as React.CSSProperties
               }
             >
