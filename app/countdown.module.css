@@ -1,0 +1,144 @@
+.videoContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* object-fit is set per clip from its measured dimensions (see measureFit in
+   countdown.tsx); `cover` here is only the value used before metadata loads.
+   Bars on a letterboxed clip fall back to the black page background. */
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  background: #000;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0);
+  z-index: 2;
+  transition: background 1.5s ease-in-out;
+  cursor: pointer;
+}
+
+.overlay.started {
+  cursor: default;
+  pointer-events: none;
+}
+
+.overlay.final {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fullscreenBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.2s,
+    opacity 0.3s ease-in-out;
+  opacity: 0;
+}
+
+.fullscreenBtn:hover,
+.fullscreenBtn:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
+  opacity: 1;
+}
+
+.fullscreenBtn.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.countdownWrapper {
+  position: absolute;
+  top: 50%;
+  right: 60px;
+  transform: translateY(-50%);
+  text-align: right;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.countdownWrapper.visible {
+  opacity: 1;
+}
+
+.countdownSublabel {
+  font-family: var(--font-label), sans-serif;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-align: left;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+  margin-bottom: -5px;
+  padding-left: 10px;
+}
+
+.countdownTimer {
+  font-family: var(--font-display), sans-serif;
+  color: #fff;
+  font-size: 12rem;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* ClashDisplay ships no tabular-figure feature and its digits vary ~45% in
+   advance width ("1" is 0.41em, "0" is 0.73em), so tabular-nums above is a
+   no-op. Fixed boxes keep the timer from lurching on every tick. Widths are
+   measured from the font: widest digit 0.733em, colon 0.304em. */
+.digit,
+.colon {
+  display: inline-block;
+  text-align: center;
+}
+
+.digit {
+  width: 0.74em;
+}
+
+.colon {
+  width: 0.34em;
+}
+
+.finalTitle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 5rem;
+  font-weight: 900;
+  text-align: center;
+  width: 60%;
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+  text-shadow: 2px 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.finalTitle.visible {
+  opacity: 1;
+}
