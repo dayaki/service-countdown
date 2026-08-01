@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  COUNTDOWN_SECONDS,
   FINAL_TITLE,
+  KEN_BURNS_MS,
   MAX_CROP,
-  PANEL_LIGHTNESS,
-  PANEL_SATURATION,
+  SLIDE_COLORS,
+  SLIDE_EASING,
   SLIDE_HEIGHT_VH,
   SLIDE_SECONDS,
   SLIDE_TRANSITION_MS,
@@ -25,7 +25,7 @@ const SLIDE_COUNT =
 
 type Slide = {
   image: string | null;
-  hue: number;
+  color: string;
   /** Slides alternate which side the picture sits on. */
   imageFirst: boolean;
 };
@@ -59,24 +59,30 @@ function shuffle<T>(items: T[]) {
 }
 
 /**
+ * Draws at random without repeating until the set is exhausted, which spreads
+ * picks far more evenly than choosing independently each time.
+ */
+function makeBag<T>(items: T[]) {
+  let bag: T[] = [];
+  return () => {
+    if (items.length === 0) return null;
+    if (bag.length === 0) bag = shuffle(items);
+    return bag.pop() ?? null;
+  };
+}
+
+/**
  * Builds the whole run up front so each slide's picture and colour are fixed
  * the moment the slideshow starts — re-rolling per render would reshuffle the
  * screen on every tick.
- *
- * Pictures are drawn from a shuffled bag rather than picked independently, so
- * none repeats until every image has been shown.
  */
 function buildSlides(images: string[]): Slide[] {
-  let bag: string[] = [];
-  const draw = () => {
-    if (images.length === 0) return null;
-    if (bag.length === 0) bag = shuffle(images);
-    return bag.pop() ?? null;
-  };
+  const drawImage = makeBag(images);
+  const drawColor = makeBag(SLIDE_COLORS);
 
   return Array.from({ length: SLIDE_COUNT }, (_, i) => ({
-    image: draw(),
-    hue: Math.floor(Math.random() * 360),
+    image: drawImage(),
+    color: drawColor() ?? SLIDE_COLORS[0],
     imageFirst: i % 2 === 0,
   }));
 }
@@ -84,20 +90,25 @@ function buildSlides(images: string[]): Slide[] {
 export default function Countdown({
   videos,
   images,
+  seconds,
 }: {
   videos: string[];
   images: string[];
+  seconds: number;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [started, setStarted] = useState(false);
   const [videoIndex, setVideoIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(seconds);
   const [ended, setEnded] = useState(false);
   const [fit, setFit] = useState<"cover" | "contain">("cover");
   const [slides, setSlides] = useState<Slide[] | null>(null);
 
-  const inSlideshow = started && secondsLeft <= SLIDESHOW_START_SECONDS;
+  // A `?seconds=` override shorter than the slideshow means it should open on
+  // the first slide, not jump into the middle of the run.
+  const slideshowStart = Math.min(SLIDESHOW_START_SECONDS, seconds);
+  const inSlideshow = started && secondsLeft <= slideshowStart;
 
   // Clips vary in shape (16:9, 4:3, ultrawide), so the fit is decided per clip
   // once its intrinsic size is known rather than fixed in CSS.
@@ -143,7 +154,7 @@ export default function Countdown({
   useEffect(() => {
     if (!started) return;
 
-    const deadline = Date.now() + COUNTDOWN_SECONDS * 1000;
+    const deadline = Date.now() + seconds * 1000;
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
       setSecondsLeft(remaining);
@@ -153,7 +164,7 @@ export default function Countdown({
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [started]);
+  }, [started, seconds]);
 
   // Built once, on the client, at the moment the slideshow is due. Doing this
   // during render would desync server and client on the random values.
@@ -188,10 +199,7 @@ export default function Countdown({
   // to — it exists only to fill the strip below.
   const slideIndex = Math.min(
     SLIDE_COUNT - 2,
-    Math.max(
-      0,
-      Math.floor((SLIDESHOW_START_SECONDS - secondsLeft) / SLIDE_SECONDS),
-    ),
+    Math.max(0, Math.floor((slideshowStart - secondsLeft) / SLIDE_SECONDS)),
   );
 
   return (
@@ -220,6 +228,8 @@ export default function Countdown({
               // expressed in the same unit so it stays aligned as it grows.
               "--slide-h": ended ? "100vh" : `${SLIDE_HEIGHT_VH}vh`,
               "--slide-ms": `${SLIDE_TRANSITION_MS}ms`,
+              "--slide-ease": SLIDE_EASING,
+              "--ken-burns-ms": `${KEN_BURNS_MS}ms`,
               transform: `translateY(calc(-${slideIndex} * var(--slide-h)))`,
             } as React.CSSProperties
           }
@@ -227,22 +237,30 @@ export default function Countdown({
           {slides.map((slide, i) => (
             <div
               key={i}
-              className={styles.slide}
+              className={`${styles.slide} ${
+                i === slideIndex ? styles.slideActive : ""
+              }`}
               style={{ flexDirection: slide.imageFirst ? "row" : "row-reverse" }}
             >
-              <div
-                className={styles.imagePanel}
-                style={
-                  slide.image
-                    ? { backgroundImage: `url("${slide.image}")` }
-                    : undefined
-                }
-              />
+              <div className={styles.imagePanel}>
+                <div
+                  className={styles.imageDrift}
+                  style={
+                    slide.image
+                      ? {
+                          backgroundImage: `url("${slide.image}")`,
+                          // Opposing drift directions stop the stack from
+                          // moving as one block.
+                          animationDirection:
+                            i % 2 === 0 ? "alternate" : "alternate-reverse",
+                        }
+                      : undefined
+                  }
+                />
+              </div>
               <div
                 className={styles.numberPanel}
-                style={{
-                  background: `hsl(${slide.hue} ${PANEL_SATURATION}% ${PANEL_LIGHTNESS}%)`,
-                }}
+                style={{ background: slide.color }}
               >
                 <span className={styles.slideNumber}>{secondsLeft}</span>
               </div>

@@ -173,7 +173,7 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  transition: transform var(--slide-ms) cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform var(--slide-ms) var(--slide-ease);
   will-change: transform;
 }
 
@@ -182,9 +182,17 @@
   width: 100%;
   flex: 0 0 var(--slide-h);
   height: var(--slide-h);
+  /* Slides waiting their turn sit back; the active one comes forward. Gives
+     the stack depth so the movement reads as travel, not a jump cut. */
+  filter: brightness(0.55);
   transition:
-    flex-basis var(--slide-ms) cubic-bezier(0.65, 0, 0.35, 1),
-    height var(--slide-ms) cubic-bezier(0.65, 0, 0.35, 1);
+    flex-basis var(--slide-ms) var(--slide-ease),
+    height var(--slide-ms) var(--slide-ease),
+    filter var(--slide-ms) ease-in-out;
+}
+
+.slide.slideActive {
+  filter: brightness(1);
 }
 
 .imagePanel,
@@ -192,15 +200,35 @@
   flex: 1 1 50%;
   min-width: 0;
   transition:
-    flex-basis var(--slide-ms) cubic-bezier(0.65, 0, 0.35, 1),
+    flex-basis var(--slide-ms) var(--slide-ease),
     opacity var(--slide-ms) ease-in-out;
 }
 
 .imagePanel {
+  position: relative;
+  overflow: hidden;
   background-color: #111;
+}
+
+/* A slow push in and out, so a slide is never entirely still while it holds.
+   Inset past the edges leaves room to drift without exposing the panel. */
+.imageDrift {
+  position: absolute;
+  inset: -4%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes kenBurns {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(0, -1.5%, 0);
+  }
 }
 
 .numberPanel {
@@ -226,4 +254,22 @@
 .slideshowEnded .numberPanel {
   flex: 0 0 0%;
   opacity: 0;
+}
+
+/* The final slide is the only thing on screen, so it should not stay dimmed. */
+.slideshowEnded .slide {
+  filter: brightness(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imageDrift {
+    animation: none;
+  }
+
+  .slideshow,
+  .slide,
+  .imagePanel,
+  .numberPanel {
+    transition-duration: 1ms;
+  }
 }
