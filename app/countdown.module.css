@@ -184,7 +184,7 @@
   height: var(--slide-h);
   /* Slides waiting their turn sit back; the active one comes forward. Gives
      the stack depth so the movement reads as travel, not a jump cut. */
-  filter: brightness(0.55);
+  filter: brightness(var(--slide-dim));
   transition:
     flex-basis var(--slide-ms) var(--slide-ease),
     height var(--slide-ms) var(--slide-ease),
@@ -195,31 +195,45 @@
   filter: brightness(1);
 }
 
+/* The two panels split the width by --image-share, which the active slide
+   animates from IMAGE_WIDE_PERCENT down to 50% to reveal the number. Both
+   widths are stated explicitly so each animates rather than reflowing. */
 .imagePanel,
 .numberPanel {
-  flex: 1 1 50%;
   min-width: 0;
   transition:
-    flex-basis var(--slide-ms) var(--slide-ease),
-    opacity var(--slide-ms) ease-in-out;
+    flex-basis var(--open-ms) var(--slide-ease),
+    opacity var(--open-ms) ease-in-out;
 }
 
 .imagePanel {
   position: relative;
   overflow: hidden;
   background-color: #111;
+  flex: 0 0 var(--image-share);
 }
 
-/* A slow push in and out, so a slide is never entirely still while it holds.
-   Inset past the edges leaves room to drift without exposing the panel. */
+.numberPanel {
+  flex: 0 0 calc(100% - var(--image-share));
+}
+
+/* All of a slide's pictures are stacked here and crossfaded by opacity. A slow
+   push in and out keeps a slide from ever looking entirely still. Inset past
+   the edges leaves room to drift without exposing the panel. */
 .imageDrift {
   position: absolute;
   inset: -4%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  transition: opacity var(--fade-ms) ease-in-out;
+  will-change: opacity;
+}
+
+/* Drift only on the slide being looked at — the others are barely on screen
+   and animating all of them is wasted work. */
+.slideActive .imageDrift {
   animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
-  will-change: transform;
 }
 
 @keyframes kenBurns {

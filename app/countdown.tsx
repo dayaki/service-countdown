@@ -2,33 +2,65 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  EVEN_HOLD_SECONDS,
+  EVEN_IMAGE_COUNT,
   FINAL_TITLE,
+  HORIZONTAL_TRANSITION_MS,
+  IMAGE_FADE_MS,
+  IMAGE_WIDE_PERCENT,
   KEN_BURNS_MS,
   MAX_CROP,
   SLIDE_COLORS,
+  SLIDE_DIM,
   SLIDE_EASING,
   SLIDE_HEIGHT_VH,
-  SLIDE_SECONDS,
   SLIDE_TRANSITION_MS,
   SLIDESHOW_START_SECONDS,
   SUBLABEL,
+  WIDE_HOLD_SECONDS,
+  WIDE_IMAGE_COUNT,
 } from "./config";
 import styles from "./countdown.module.css";
 
+/** One slide is a wide phase followed by an even phase. */
+const CYCLE_MS = (WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS) * 1000;
+const WIDE_MS = WIDE_HOLD_SECONDS * 1000;
+const IMAGES_PER_SLIDE = WIDE_IMAGE_COUNT + EVEN_IMAGE_COUNT;
+
 /**
  * Slides needed to carry the countdown from SLIDESHOW_START_SECONDS to zero,
- * plus one extra that only ever exists to be the 20% peeking below the last
+ * plus one extra that only ever exists to be the strip peeking below the last
  * real slide.
  */
 const SLIDE_COUNT =
-  Math.ceil((SLIDESHOW_START_SECONDS + 1) / SLIDE_SECONDS) + 1;
+  Math.ceil((SLIDESHOW_START_SECONDS * 1000) / CYCLE_MS) + 1;
 
 type Slide = {
-  image: string | null;
+  /** WIDE_IMAGE_COUNT for the wide phase, then EVEN_IMAGE_COUNT after it. */
+  images: string[];
   color: string;
   /** Slides alternate which side the picture sits on. */
   imageFirst: boolean;
 };
+
+/**
+ * Which picture the active slide is showing, as an index into slide.images.
+ * The wide phase divides its hold between WIDE_IMAGE_COUNT pictures and the
+ * even phase divides its own between the rest.
+ */
+function imageSlotAt(withinCycleMs: number) {
+  if (withinCycleMs < WIDE_MS) {
+    const each = WIDE_MS / WIDE_IMAGE_COUNT;
+    return Math.min(WIDE_IMAGE_COUNT - 1, Math.floor(withinCycleMs / each));
+  }
+
+  const each = (CYCLE_MS - WIDE_MS) / EVEN_IMAGE_COUNT;
+  const intoEven = withinCycleMs - WIDE_MS;
+  return (
+    WIDE_IMAGE_COUNT +
+    Math.min(EVEN_IMAGE_COUNT - 1, Math.floor(intoEven / each))
+  );
+}
 
 function formatTime(totalSeconds: number) {
   const mins = Math.floor(totalSeconds / 60);
@@ -81,7 +113,10 @@ function buildSlides(images: string[]): Slide[] {
   const drawColor = makeBag(SLIDE_COLORS);
 
   return Array.from({ length: SLIDE_COUNT }, (_, i) => ({
-    image: drawImage(),
+    images: Array.from(
+      { length: IMAGES_PER_SLIDE },
+      () => drawImage() ?? "",
+    ).filter(Boolean),
     color: drawColor() ?? SLIDE_COLORS[0],
     imageFirst: i % 2 === 0,
   }));
@@ -101,6 +136,8 @@ export default function Countdown({
   const [started, setStarted] = useState(false);
   const [videoIndex, setVideoIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(seconds);
+  /** Milliseconds since the slideshow began; the cycle needs sub-second detail. */
+  const [slideshowMs, setSlideshowMs] = useState(0);
   const [ended, setEnded] = useState(false);
   const [fit, setFit] = useState<"cover" | "contain">("cover");
   const [slides, setSlides] = useState<Slide[] | null>(null);
@@ -155,16 +192,22 @@ export default function Countdown({
     if (!started) return;
 
     const deadline = Date.now() + seconds * 1000;
+    const slideshowBegins = deadline - slideshowStart * 1000;
+
     const tick = () => {
-      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
       setSecondsLeft(remaining);
+      setSlideshowMs(Math.max(0, now - slideshowBegins));
       if (remaining === 0) setEnded(true);
     };
 
+    // 125ms keeps the picture crossfades landing close to their intended
+    // moment; at 1s they would drift by up to a second against the cycle.
     tick();
-    const id = setInterval(tick, 250);
+    const id = setInterval(tick, 125);
     return () => clearInterval(id);
-  }, [started, seconds]);
+  }, [started, seconds, slideshowStart]);
 
   // Built once, on the client, at the moment the slideshow is due. Doing this
   // during render would desync server and client on the random values.
@@ -197,10 +240,24 @@ export default function Countdown({
 
   // Clamped to the last real slide so the trailing peek slide is never scrolled
   // to — it exists only to fill the strip below.
-  const slideIndex = Math.min(
-    SLIDE_COUNT - 2,
-    Math.max(0, Math.floor((slideshowStart - secondsLeft) / SLIDE_SECONDS)),
-  );
+  const cycleIndex = Math.floor(slideshowMs / CYCLE_MS);
+  const withinCycleMs = slideshowMs - cycleIndex * CYCLE_MS;
+
+  const slideIndex = Math.min(SLIDE_COUNT - 2, Math.max(0, cycleIndex));
+  const activeIsWide = withinCycleMs < WIDE_MS;
+  const imageSlot = imageSlotAt(withinCycleMs);
+
+  /**
+   * Slides above the active one have already opened and stay open; slides
+   * below have not opened yet. Only the active slide moves, so a slide never
+   * re-narrows as it leaves.
+   */
+  const imageShareFor = (i: number) => {
+    if (ended) return 100;
+    if (i < slideIndex) return 50;
+    if (i === slideIndex && !activeIsWide) return 50;
+    return IMAGE_WIDE_PERCENT;
+  };
 
   return (
     <>
@@ -229,7 +286,10 @@ export default function Countdown({
               "--slide-h": ended ? "100vh" : `${SLIDE_HEIGHT_VH}vh`,
               "--slide-ms": `${SLIDE_TRANSITION_MS}ms`,
               "--slide-ease": SLIDE_EASING,
+              "--slide-dim": SLIDE_DIM,
               "--ken-burns-ms": `${KEN_BURNS_MS}ms`,
+              "--open-ms": `${HORIZONTAL_TRANSITION_MS}ms`,
+              "--fade-ms": `${IMAGE_FADE_MS}ms`,
               transform: `translateY(calc(-${slideIndex} * var(--slide-h)))`,
             } as React.CSSProperties
           }
@@ -240,23 +300,32 @@ export default function Countdown({
               className={`${styles.slide} ${
                 i === slideIndex ? styles.slideActive : ""
               }`}
-              style={{ flexDirection: slide.imageFirst ? "row" : "row-reverse" }}
+              style={
+                {
+                  flexDirection: slide.imageFirst ? "row" : "row-reverse",
+                  "--image-share": `${imageShareFor(i)}%`,
+                } as React.CSSProperties
+              }
             >
               <div className={styles.imagePanel}>
-                <div
-                  className={styles.imageDrift}
-                  style={
-                    slide.image
-                      ? {
-                          backgroundImage: `url("${slide.image}")`,
-                          // Opposing drift directions stop the stack from
-                          // moving as one block.
-                          animationDirection:
-                            i % 2 === 0 ? "alternate" : "alternate-reverse",
-                        }
-                      : undefined
-                  }
-                />
+                {/* Every picture for this slide is stacked and crossfaded by
+                    opacity, so a change never shows a gap while the next one
+                    decodes. */}
+                {slide.images.map((image, slot) => (
+                  <div
+                    key={slot}
+                    className={styles.imageDrift}
+                    style={{
+                      backgroundImage: `url("${image}")`,
+                      opacity:
+                        (i === slideIndex ? imageSlot : 0) === slot ? 1 : 0,
+                      // Opposing drift directions stop the stack from moving
+                      // as one block.
+                      animationDirection:
+                        (i + slot) % 2 === 0 ? "alternate" : "alternate-reverse",
+                    }}
+                  />
+                ))}
               </div>
               <div
                 className={styles.numberPanel}
