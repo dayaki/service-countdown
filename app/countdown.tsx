@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  EVEN_HOLD_SECONDS,
-  EVEN_IMAGE_COUNT,
+  CAROUSEL_MS,
+  COUNTDOWN_PANEL_PERCENT,
   FINAL_TITLE,
   HORIZONTAL_AT_SECONDS,
-  HORIZONTAL_TRANSITION_MS,
   IMAGE_FADE_MS,
-  IMAGE_WIDE_PERCENT,
+  IMAGE_PANEL_PERCENT,
   KEN_BURNS_MS,
+  LEAD_IMAGE_COUNT,
+  LEAD_SECONDS,
   MAX_CROP,
+  SETTLE_IMAGE_COUNT,
+  SETTLE_SECONDS,
   SLIDE_COLORS,
   SLIDE_DIM,
   SLIDE_EASING,
@@ -19,14 +22,13 @@ import {
   SLIDE_TRANSITION_MS,
   SLIDESHOW_START_SECONDS,
   SUBLABEL,
-  WIDE_HOLD_SECONDS,
-  WIDE_IMAGE_COUNT,
 } from "./config";
 import styles from "./countdown.module.css";
 
-const WIDE_MS = WIDE_HOLD_SECONDS * 1000;
-const REVEAL_SECONDS = WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS;
+const LEAD_MS = LEAD_SECONDS * 1000;
+const REVEAL_SECONDS = LEAD_SECONDS + SETTLE_SECONDS;
 const REVEAL_MS = REVEAL_SECONDS * 1000;
+const IMAGES_PER_REVEAL = LEAD_IMAGE_COUNT + SETTLE_IMAGE_COUNT;
 
 type Slide = {
   /**
@@ -57,7 +59,10 @@ type Slide = {
  * occasional.
  */
 function buildTimeline() {
+  // A mark names when the sweep happens, but the slide has to start
+  // LEAD_SECONDS earlier for the run-up to fit.
   const marks = [...new Set(HORIZONTAL_AT_SECONDS)]
+    .map((mark) => mark + LEAD_SECONDS)
     .filter((mark) => mark > 0 && mark <= SLIDESHOW_START_SECONDS)
     .sort((a, b) => b - a);
 
@@ -99,20 +104,26 @@ function buildTimeline() {
 }
 
 /**
- * Which picture a reveal slide is showing, as an index into slide.images. The
- * wide phase divides its hold between WIDE_IMAGE_COUNT pictures and the even
- * phase divides its own between the rest.
+ * Which picture a carousel slide is showing, as an index into slide.images.
+ *
+ * The lead-in divides its time between LEAD_IMAGE_COUNT pictures, then the
+ * last of them holds for the whole sweep — that is the picture people watch
+ * travel across — and the remainder cycle once it has landed.
  */
 function imageSlotAt(withinMs: number) {
-  if (withinMs < WIDE_MS) {
-    const each = WIDE_MS / WIDE_IMAGE_COUNT;
-    return Math.min(WIDE_IMAGE_COUNT - 1, Math.floor(withinMs / each));
+  if (withinMs < LEAD_MS) {
+    const each = LEAD_MS / LEAD_IMAGE_COUNT;
+    return Math.min(LEAD_IMAGE_COUNT - 1, Math.floor(withinMs / each));
   }
 
-  const each = (REVEAL_MS - WIDE_MS) / EVEN_IMAGE_COUNT;
+  // The travelling picture stays put until the sweep is done.
+  const sweptMs = withinMs - LEAD_MS - CAROUSEL_MS;
+  if (sweptMs < 0) return LEAD_IMAGE_COUNT - 1;
+
+  const each = (REVEAL_MS - LEAD_MS - CAROUSEL_MS) / SETTLE_IMAGE_COUNT;
   return (
-    WIDE_IMAGE_COUNT +
-    Math.min(EVEN_IMAGE_COUNT - 1, Math.floor((withinMs - WIDE_MS) / each))
+    LEAD_IMAGE_COUNT +
+    Math.min(SETTLE_IMAGE_COUNT - 1, Math.floor(sweptMs / each))
   );
 }
 
@@ -171,7 +182,7 @@ function buildSlides(images: string[]): Slide[] {
     // A reveal needs a picture for every slot it cycles through; an ordinary
     // slide needs one.
     images: Array.from(
-      { length: timing.reveal ? WIDE_IMAGE_COUNT + EVEN_IMAGE_COUNT : 1 },
+      { length: timing.reveal ? IMAGES_PER_REVEAL : 1 },
       () => drawImage() ?? "",
     ).filter(Boolean),
     color: drawColor() ?? SLIDE_COLORS[0],
@@ -304,20 +315,20 @@ export default function Countdown({
 
   const active = slides?.[slideIndex];
   const withinMs = active ? slideshowMs - active.startMs : 0;
-  const activeIsWide = !!active?.reveal && withinMs < WIDE_MS;
   const imageSlot = active?.reveal ? imageSlotAt(withinMs) : 0;
 
   /**
-   * Ordinary slides are always an even split. A reveal waits wide, opens when
-   * it becomes active, and stays open once past — so it never re-narrows on
-   * its way off screen.
+   * How far the carousel track has travelled, as a percentage of the screen.
+   * It sits at 0 through the lead-in, then moves left by exactly one number
+   * panel — which puts the picture on the left and brings the second number
+   * panel in from the right.
+   *
+   * Slides already passed stay swept so none of them rewinds on the way out.
    */
-  const imageShareFor = (slide: Slide, i: number) => {
-    if (ended) return 100;
-    if (!slide.reveal) return 50;
-    if (i < slideIndex) return 50;
-    if (i === slideIndex && !activeIsWide) return 50;
-    return IMAGE_WIDE_PERCENT;
+  const trackOffsetFor = (i: number) => {
+    if (i < slideIndex) return -COUNTDOWN_PANEL_PERCENT;
+    if (i > slideIndex) return 0;
+    return withinMs < LEAD_MS ? 0 : -COUNTDOWN_PANEL_PERCENT;
   };
 
   return (
@@ -349,29 +360,17 @@ export default function Countdown({
               "--slide-ease": SLIDE_EASING,
               "--slide-dim": SLIDE_DIM,
               "--ken-burns-ms": `${KEN_BURNS_MS}ms`,
-              "--open-ms": `${HORIZONTAL_TRANSITION_MS}ms`,
+              "--carousel-ms": `${CAROUSEL_MS}ms`,
               "--fade-ms": `${IMAGE_FADE_MS}ms`,
               transform: `translateY(calc(-${slideIndex} * var(--slide-h)))`,
             } as React.CSSProperties
           }
         >
-          {slides.map((slide, i) => (
-            <div
-              key={i}
-              className={`${styles.slide} ${
-                i === slideIndex ? styles.slideActive : ""
-              }`}
-              style={
-                {
-                  flexDirection: slide.imageFirst ? "row" : "row-reverse",
-                  "--image-share": `${imageShareFor(slide, i)}%`,
-                } as React.CSSProperties
-              }
-            >
-              <div className={styles.imagePanel}>
-                {/* Every picture for this slide is stacked and crossfaded by
-                    opacity, so a change never shows a gap while the next one
-                    decodes. */}
+          {slides.map((slide, i) => {
+            // Every picture for a slide is stacked and crossfaded by opacity,
+            // so a change never shows a gap while the next one decodes.
+            const pictures = (
+              <>
                 {slide.images.map((image, slot) => (
                   <div
                     key={slot}
@@ -387,15 +386,86 @@ export default function Countdown({
                     }}
                   />
                 ))}
-              </div>
+              </>
+            );
+
+            const number = (
+              <span className={styles.slideNumber}>{secondsLeft}</span>
+            );
+
+            // At zero everything collapses to a single full-bleed picture, so
+            // a sweep slide drops back to the ordinary structure to get there.
+            if (slide.reveal && !ended) {
+              // A track of number / picture / number that slides left by one
+              // number-panel width. Mid-sweep both number panels are partly on
+              // screen, which is what puts an edge of the count at each side.
+              return (
+                <div
+                  key={i}
+                  className={`${styles.slide} ${styles.slideSweep} ${
+                    i === slideIndex ? styles.slideActive : ""
+                  }`}
+                >
+                  <div
+                    className={styles.carousel}
+                    style={{
+                      transform: `translateX(${trackOffsetFor(i)}%)`,
+                    }}
+                  >
+                    <div
+                      className={styles.carouselNumber}
+                      style={{
+                        left: 0,
+                        width: `${COUNTDOWN_PANEL_PERCENT}%`,
+                        background: slide.color,
+                      }}
+                    >
+                      {number}
+                    </div>
+                    <div
+                      className={styles.carouselImage}
+                      style={{
+                        left: `${COUNTDOWN_PANEL_PERCENT}%`,
+                        width: `${IMAGE_PANEL_PERCENT}%`,
+                      }}
+                    >
+                      {pictures}
+                    </div>
+                    <div
+                      className={styles.carouselNumber}
+                      style={{
+                        left: `${COUNTDOWN_PANEL_PERCENT + IMAGE_PANEL_PERCENT}%`,
+                        width: `${COUNTDOWN_PANEL_PERCENT}%`,
+                        background: slide.color,
+                      }}
+                    >
+                      {number}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
               <div
-                className={styles.numberPanel}
-                style={{ background: slide.color }}
+                key={i}
+                className={`${styles.slide} ${
+                  i === slideIndex ? styles.slideActive : ""
+                }`}
+                style={{
+                  flexDirection: slide.imageFirst ? "row" : "row-reverse",
+                }}
               >
-                <span className={styles.slideNumber}>{secondsLeft}</span>
+                <div className={styles.imagePanel}>{pictures}</div>
+                <div
+                  className={styles.numberPanel}
+                  style={{ background: slide.color }}
+                >
+                  {number}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

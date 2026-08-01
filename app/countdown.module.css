@@ -195,26 +195,65 @@
   filter: brightness(1);
 }
 
-/* The two panels split the width by --image-share, which the active slide
-   animates from IMAGE_WIDE_PERCENT down to 50% to reveal the number. Both
-   widths are stated explicitly so each animates rather than reflowing. */
+/* An ordinary slide is a plain even split. */
 .imagePanel,
 .numberPanel {
+  flex: 1 1 50%;
   min-width: 0;
   transition:
-    flex-basis var(--open-ms) var(--slide-ease),
-    opacity var(--open-ms) ease-in-out;
+    flex-basis var(--slide-ms) var(--slide-ease),
+    opacity var(--slide-ms) ease-in-out;
 }
 
 .imagePanel {
   position: relative;
   overflow: hidden;
   background-color: #111;
-  flex: 0 0 var(--image-share);
 }
 
-.numberPanel {
-  flex: 0 0 calc(100% - var(--image-share));
+/* --- the sideways sweep ------------------------------------------------------
+
+   A carousel slide is a track wider than the screen holding three panels:
+
+     │◀───── screen ─────▶│
+     ┌─────────┬────────────┬─────────┐
+     │ number  │  picture   │ number  │      track at rest
+     └─────────┴────────────┴─────────┘
+     0        50%         110%      160%
+
+   Sliding it left by one number-panel width puts the picture on the left and
+   brings the second number panel in from the right. Halfway through, both
+   number panels are partly on screen — which is what shows an edge of the
+   count at each side rather than one panel resizing. */
+.slideSweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.carousel {
+  position: absolute;
+  inset: 0;
+  transition: transform var(--carousel-ms) var(--slide-ease);
+  will-change: transform;
+}
+
+.carouselNumber,
+.carouselImage {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.carouselNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.carouselImage {
+  overflow: hidden;
+  background-color: #111;
 }
 
 /* All of a slide's pictures are stacked here and crossfaded by opacity. A slow
@@ -234,6 +273,21 @@
    and animating all of them is wasted work. */
 .slideActive .imageDrift {
   animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
+}
+
+/* A landed sweep picture is tall and narrow, so it pans up and down instead of
+   pushing in — that is what shows more of the frame than a still crop would. */
+.slideActive .carouselImage .imageDrift {
+  animation-name: panVertical;
+}
+
+@keyframes panVertical {
+  from {
+    transform: scale(1.12) translate3d(0, 3.5%, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(0, -3.5%, 0);
+  }
 }
 
 @keyframes kenBurns {

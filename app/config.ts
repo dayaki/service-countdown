@@ -17,21 +17,29 @@
  *   │ IMG │  54  │  Sides alternate on each slide.
  *   └─────┴──────┘
  *
- * At the few moments listed in HORIZONTAL_AT_SECONDS, one slide does something
- * different instead — it arrives wide and opens sideways:
+ * At the few moments listed in HORIZONTAL_AT_SECONDS, one slide sweeps sideways
+ * instead — a carousel that carries the picture from right to left:
  *
- *   ┌──────────┬─┐  WIDE   picture takes IMAGE_WIDE_PERCENT of the width,
- *   │  IMAGE   │5│           an edge of the number showing beside it.
- *   └──────────┴─┘           Holds WIDE_HOLD_SECONDS, cycling
- *                            WIDE_IMAGE_COUNT pictures.
- *          ↓ opens sideways over HORIZONTAL_TRANSITION_MS
- *   ┌─────┬──────┐  EVEN   even split, number fully revealed.
- *   │ IMG │  54  │           Holds EVEN_HOLD_SECONDS, cycling
- *   └─────┴──────┘           EVEN_IMAGE_COUNT more pictures.
- *          ↓ then the ordinary vertical slides resume
+ *   ┌─────┬──────┐  LEAD    ordinary-looking even split. Holds LEAD_SECONDS,
+ *   │  13 │ IMG  │            cycling LEAD_IMAGE_COUNT pictures.
+ *   └─────┴──────┘
+ *          ↓ the track slides left over CAROUSEL_MS
+ *   ┌┬──────────┬┐  MID     picture sweeps through the middle, an edge of the
+ *   ││   IMG    ││           number showing at BOTH sides. The last lead
+ *   └┴──────────┴┘           picture stays put for the whole sweep.
+ *          ↓
+ *   ┌──────┬─────┐  SETTLED picture has landed on the left. Holds
+ *   │ IMG  │  09 │            SETTLE_SECONDS, cycling SETTLE_IMAGE_COUNT more
+ *   └──────┴─────┘            pictures while drifting to show more of each.
+ *          ↓ then the ordinary vertical slides resume, back to an even split
  *
- * The vertical stack pauses while one of these plays out, so a wide slide
- * lasts WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS rather than SLIDE_SECONDS.
+ * The sweep is a track of three panels — number, picture, number — that slides
+ * left by exactly one number-panel width. That is why an edge of the number
+ * shows on both sides mid-sweep: they are two different panels, the one being
+ * pushed off and the one arriving.
+ *
+ * The vertical stack pauses while this plays out, so a carousel slide lasts
+ * LEAD_SECONDS + SETTLE_SECONDS rather than SLIDE_SECONDS.
  *
  * To rehearse the last minute without waiting, add `?seconds=70` to the URL.
  */
@@ -73,73 +81,90 @@ export const SLIDE_SECONDS = 3;
  * More entries → more reveals, less of the steady vertical rhythm.
  * Fewer        → the reveal stays a rare punctuation mark.
  *
- * Each reveal occupies WIDE_HOLD_SECONDS + EVEN_HOLD_SECONDS (10s as set), so
- * space entries at least that far apart — a mark landing inside a reveal
- * already running is skipped, and you would silently get fewer than you listed.
+ * These are the moment the sweep itself starts, matching "at 10" in the
+ * sketches. The slide begins LEAD_SECONDS earlier so the lead-in has somewhere
+ * to run.
  *
- * A reveal starts at the first slide boundary at or before the mark, so the
- * timing is approximate to within one SLIDE_SECONDS.
+ * Each carousel occupies LEAD_SECONDS + SETTLE_SECONDS (8s as set), so space
+ * entries at least that far apart — a mark landing inside a carousel already
+ * running is dropped, and you would silently get fewer than you listed.
+ *
+ * A carousel snaps to the nearest slide boundary, so the sweep can land up to
+ * one SLIDE_SECONDS away from the second you name.
  */
-export const HORIZONTAL_AT_SECONDS = [50, 38, 28];
+export const HORIZONTAL_AT_SECONDS = [50, 42, 28];
 
 /**
- * On a reveal slide only: how long the wide phase holds — picture dominant,
- * number reduced to an edge — before it opens out to an even split.
+ * How long the carousel slide looks ordinary before the sweep begins — the
+ * "count down to 10" part of the sketch.
  *
- * Higher → longer to enjoy the big picture, but the number stays clipped for
- *          longer and the reveal takes up more of the final minute.
- * Lower  → the number is revealed sooner.
+ * Higher → a longer run-up, and more of the final minute spent on the slide.
+ * Lower  → the sweep arrives sooner after the slide appears.
  */
-export const WIDE_HOLD_SECONDS = 5;
+export const LEAD_SECONDS = 3;
 
 /**
- * On a reveal slide only: how long the even 50/50 split holds after opening,
- * before the ordinary vertical slides resume.
+ * How many pictures cycle during the lead-in. The last one stays put for the
+ * whole sweep, so it is the picture people see travelling across.
  *
- * Higher → the number is fully readable for longer after each reveal.
- * Lower  → returns to the normal rhythm sooner.
+ * Higher → faster changes in the run-up (LEAD_SECONDS split more ways).
+ * Lower  → each lingers. 1 means no cycling before the sweep.
  */
-export const EVEN_HOLD_SECONDS = 5;
+export const LEAD_IMAGE_COUNT = 4;
 
 /**
- * How many different pictures cycle through during the wide phase.
+ * How long the sideways sweep takes, in milliseconds. Deliberately slower than
+ * the vertical move so there is time to take the picture in as it passes.
  *
- * Higher → pictures change faster (WIDE_HOLD_SECONDS split more ways; at 5s
- *          and 4 pictures that is 1.25s each).
- * Lower  → each picture lingers. 1 means no cycling at all.
- */
-export const WIDE_IMAGE_COUNT = 4;
-
-/**
- * How many pictures cycle during the even phase, once the number is revealed.
+ * Higher → a longer, more languid sweep (3000 is very slow).
+ * Lower  → the picture snaps across.
  *
- * Higher → faster changes alongside the number.
- * Lower  → calmer. At 5s and 3 pictures that is about 1.7s each.
- */
-export const EVEN_IMAGE_COUNT = 3;
-
-/**
- * How much of the width the picture takes during the wide phase, as a
- * percentage. The rest is the edge of the number panel.
- *
- * Higher → picture dominates and less of the number shows (95 is nearly a
- *          full-bleed image with a colour stripe).
- * Lower  → more of the number stays readable, less dramatic reveal. At 50
- *          there is no reveal at all, since it already matches the even phase.
- */
-export const IMAGE_WIDE_PERCENT = 80;
-
-/**
- * How long the sideways opening takes, in milliseconds. Deliberately slower
- * than the vertical move so there is time to take the picture in.
- *
- * Higher → a longer, more languid reveal (3000 is very slow).
- * Lower  → the number snaps into place.
- *
- * Keep it below WIDE_HOLD_SECONDS × 1000 or it will not have finished opening
+ * Keep it below SETTLE_SECONDS × 1000, or the sweep will not have finished
  * before the slide moves on.
  */
-export const HORIZONTAL_TRANSITION_MS = 1800;
+export const CAROUSEL_MS = 1500;
+
+/**
+ * How long the landed 60/40 split holds before the ordinary vertical slides
+ * resume — the "count down to 5" part of the sketch. Includes the sweep.
+ *
+ * Higher → the picture sits on the left for longer after landing.
+ * Lower  → returns to the normal rhythm sooner.
+ */
+export const SETTLE_SECONDS = 5;
+
+/**
+ * How many more pictures cycle after the sweep lands — the 5th and 6th in the
+ * sketch.
+ *
+ * Higher → faster changes while the number counts down beside them.
+ * Lower  → calmer. 1 means the travelling picture simply stays.
+ */
+export const SETTLE_IMAGE_COUNT = 2;
+
+/**
+ * Width of a number panel in the carousel track, as a percentage of the
+ * screen. Also exactly how far the track travels.
+ *
+ * Higher → the number starts wider and the sweep is longer.
+ * Lower  → a narrower number panel and a shorter sweep.
+ *
+ * At 50 the slide starts as an even split, matching the ordinary slides
+ * either side of it.
+ */
+export const COUNTDOWN_PANEL_PERCENT = 50;
+
+/**
+ * Width of the picture panel in the carousel track, as a percentage of the
+ * screen. What is left once the track has travelled is the number's share, so
+ * 60 here lands the sketch's 60/40 split.
+ *
+ * Higher → picture dominates after landing and fills more of the screen
+ *          mid-sweep (100 covers it completely, hiding both number edges).
+ * Lower  → more number, less picture. Below COUNTDOWN_PANEL_PERCENT the
+ *          picture would end up smaller than it started.
+ */
+export const IMAGE_PANEL_PERCENT = 60;
 
 /**
  * How long one picture takes to crossfade into the next, in milliseconds.
