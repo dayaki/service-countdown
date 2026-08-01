@@ -17,6 +17,8 @@ next-env.d.ts
 .vercel
 *.tsbuildinfo
 
-# Source videos are 672MB total and four exceed GitHub's 100MB per-file limit,
-# so they are kept out of git. Track them with Git LFS if they need versioning.
+# Service media is swapped out for every service, so it lives outside git.
+# The app reads whatever is in these folders at runtime, no code change needed.
+# Videos are also 672MB total, four of them over GitHub's 100MB file limit.
 public/videos/
+public/images/

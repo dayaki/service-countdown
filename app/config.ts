@@ -1,14 +1,31 @@
-export const VIDEOS = [
-  "/videos/01.mp4",
-  "/videos/02.mp4",
-  "/videos/03.mp4",
-  "/videos/04.mp4",
-  "/videos/05.mp4",
-  "/videos/06.mp4",
-];
-
 /** How long the countdown runs, in seconds. */
 export const COUNTDOWN_SECONDS = 25 * 60;
+
+/**
+ * Seconds remaining when the video gives way to the split slideshow. The video
+ * keeps playing underneath so its audio carries through the final stretch.
+ */
+export const SLIDESHOW_START_SECONDS = 59;
+
+/** How long each slide holds before the stack slides up to the next one. */
+export const SLIDE_SECONDS = 5;
+
+/**
+ * Percentage of the viewport height the active slide occupies. The remainder
+ * is the next slide peeking in from below, which is what makes the movement
+ * legible as a slideshow rather than a cut.
+ */
+export const SLIDE_HEIGHT_VH = 80;
+
+/** How long a slide takes to travel, in ms. */
+export const SLIDE_TRANSITION_MS = 900;
+
+/**
+ * Saturation and lightness for the randomly-hued number panel. Only the hue is
+ * random; pinning these two keeps white numerals readable on every slide.
+ */
+export const PANEL_SATURATION = 65;
+export const PANEL_LIGHTNESS = 45;
 
 /**
  * How much of a clip may be cropped before we letterbox it instead.
