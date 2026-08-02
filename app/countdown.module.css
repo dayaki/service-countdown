@@ -154,13 +154,13 @@
 
 /* --- final-minute slideshow -------------------------------------------------
 
-   A vertical stack of full-width slides, each split into a picture panel and a
-   number panel. Slides are --slide-h tall (80vh), so the active one fills most
-   of the screen and the next one shows below it; advancing is a translateY of
-   exactly one slide height.
+   A vertical stack of full-width slides, each split evenly into a picture
+   panel and a number panel. Slides are --slide-h tall, so the active one fills
+   most of the screen and the next one shows below it; advancing is a
+   translateY of exactly one slide height.
 
    --slide-h and --slide-ms are set inline from config.ts so the timing and the
-   80/20 split have a single source of truth. At zero, --slide-h becomes 100vh:
+   split have a single source of truth. At zero, --slide-h becomes 100vh:
    because both the slide height and the transform are expressed in terms of it,
    the current slide grows to fill the screen and stays aligned while it does.
 */
@@ -211,105 +211,19 @@
   background-color: #111;
 }
 
-/* --- the sideways sweep ------------------------------------------------------
+/* A slow push in and out keeps a slide from ever looking entirely still.
+   Inset past the edges leaves room to drift without exposing the panel.
 
-   Three panels — number, picture, number — positioned by their edges rather
-   than their widths. The picture's leading and trailing edges each get their
-   own duration and easing, so the lead pulls away first and the trail catches
-   up late:
-
-     at rest      │ number  │      picture      │        50 / 110
-     mid-sweep    │n│         picture         │n│         6 /  85   ← stretched
-     landed       │      picture      │ number │         0 /  60
-
-   Because the picture is wider mid-sweep than at either end, it reads as
-   growing into place rather than sliding past, and the background crop shifts
-   with it. Both number panels are on screen while the stretch is open, which
-   is what shows an edge of the count at each side.
-
-   Edges animate layout rather than transform. That is the point — a transform
-   would move the picture rigidly and could not change its shape. Only three
-   elements are involved, for a couple of seconds, a few times a service. */
-.slideSweep {
-  position: relative;
-  overflow: hidden;
-}
-
-.carousel {
-  position: absolute;
-  inset: 0;
-}
-
-.carouselNumber,
-.carouselImage {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-
-.carouselImage {
-  transition:
-    left var(--lead-ms) var(--lead-ease),
-    right var(--trail-ms) var(--trail-ease);
-}
-
-/* The outgoing number is bounded by the leading edge, the incoming one by the
-   trailing edge, so each follows the picture side it touches. */
-.numberOut {
-  transition: right var(--lead-ms) var(--lead-ease);
-}
-
-.numberIn {
-  transition: left var(--trail-ms) var(--trail-ease);
-}
-
-.carouselNumber {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.carouselImage {
-  overflow: hidden;
-  background-color: #111;
-}
-
-/* All of a slide's pictures are stacked here and crossfaded by opacity. A slow
-   push in and out keeps a slide from ever looking entirely still. Inset past
-   the edges leaves room to drift without exposing the panel. */
+   The animation runs on every slide, not just the active one. Attaching it as
+   a slide becomes active would snap the transform from the static base to the
+   keyframe start, and removing it snaps back — two visible jerks per slide. */
 .imageDrift {
   position: absolute;
   inset: -4%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  transition: opacity var(--fade-ms) ease-in-out;
-  will-change: opacity;
-}
-
-/* Runs on every slide, not just the active one. Attaching the animation as a
-   slide becomes active would snap its transform from the static base to the
-   keyframe start, and removing it snaps back — two visible jerks per slide. */
-.imageDrift {
   animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
-}
-
-/* A landed sweep picture is tall and narrow, so it pans up and down instead of
-   pushing in — that is what shows more of the frame than a still crop would.
-   The base transform matches the keyframe start for the same reason. */
-.carouselImage .imageDrift {
-  transform: scale(1.12) translate3d(0, 3.5%, 0);
-  animation-name: panVertical;
-}
-
-@keyframes panVertical {
-  from {
-    transform: scale(1.12) translate3d(0, 3.5%, 0);
-  }
-  to {
-    transform: scale(1.12) translate3d(0, -3.5%, 0);
-  }
 }
 
 @keyframes kenBurns {
@@ -359,10 +273,7 @@
   .slideshow,
   .slide,
   .imagePanel,
-  .numberPanel,
-  .carouselImage,
-  .numberOut,
-  .numberIn {
+  .numberPanel {
     transition-duration: 1ms;
   }
 }
