@@ -269,15 +269,18 @@
   will-change: opacity;
 }
 
-/* Drift only on the slide being looked at — the others are barely on screen
-   and animating all of them is wasted work. */
-.slideActive .imageDrift {
+/* Runs on every slide, not just the active one. Attaching the animation as a
+   slide becomes active would snap its transform from the static base to the
+   keyframe start, and removing it snaps back — two visible jerks per slide. */
+.imageDrift {
   animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
 }
 
 /* A landed sweep picture is tall and narrow, so it pans up and down instead of
-   pushing in — that is what shows more of the frame than a still crop would. */
-.slideActive .carouselImage .imageDrift {
+   pushing in — that is what shows more of the frame than a still crop would.
+   The base transform matches the keyframe start for the same reason. */
+.carouselImage .imageDrift {
+  transform: scale(1.12) translate3d(0, 3.5%, 0);
   animation-name: panVertical;
 }
 

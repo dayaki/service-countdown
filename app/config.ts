@@ -72,7 +72,7 @@ export const SLIDESHOW_START_SECONDS = 60;
  * Higher → slower, calmer slideshow, fewer slides, each picture gets longer.
  * Lower  → busier and more urgent, more slides, each picture gets a glance.
  */
-export const SLIDE_SECONDS = 3;
+export const SLIDE_SECONDS = 5;
 
 /**
  * Seconds remaining at which a slide does the sideways reveal instead of
@@ -85,7 +85,7 @@ export const SLIDE_SECONDS = 3;
  * sketches. The slide begins LEAD_SECONDS earlier so the lead-in has somewhere
  * to run.
  *
- * Each carousel occupies LEAD_SECONDS + SETTLE_SECONDS (8s as set), so space
+ * Each carousel occupies LEAD_SECONDS + SETTLE_SECONDS (9s as set), so space
  * entries at least that far apart — a mark landing inside a carousel already
  * running is dropped, and you would silently get fewer than you listed.
  *
@@ -101,7 +101,7 @@ export const HORIZONTAL_AT_SECONDS = [50, 42, 28];
  * Higher → a longer run-up, and more of the final minute spent on the slide.
  * Lower  → the sweep arrives sooner after the slide appears.
  */
-export const LEAD_SECONDS = 3;
+export const LEAD_SECONDS = 4;
 
 /**
  * How many pictures cycle during the lead-in. The last one stays put for the
@@ -122,7 +122,7 @@ export const LEAD_IMAGE_COUNT = 4;
  * Keep it below SETTLE_SECONDS × 1000, or the sweep will not have finished
  * before the slide moves on.
  */
-export const CAROUSEL_MS = 1500;
+export const CAROUSEL_MS = 2200;
 
 /**
  * How long the landed 60/40 split holds before the ordinary vertical slides
@@ -169,10 +169,15 @@ export const IMAGE_PANEL_PERCENT = 60;
 /**
  * How long one picture takes to crossfade into the next, in milliseconds.
  *
- * Higher → a softer dissolve; too high and pictures blur together.
+ * Higher → a softer dissolve.
  * Lower  → closer to a hard cut. 0 is an instant switch.
+ *
+ * Must stay below the gap between picture changes, or a fade never finishes
+ * before the next begins and no picture is ever seen at full strength — which
+ * reads as a permanent blur. The tightest gap is the lead-in:
+ * LEAD_SECONDS ÷ LEAD_IMAGE_COUNT, currently 1000ms.
  */
-export const IMAGE_FADE_MS = 700;
+export const IMAGE_FADE_MS = 800;
 
 /**
  * How much of the screen height the active slide takes, as a percentage. The
@@ -196,7 +201,7 @@ export const SLIDE_HEIGHT_VH = 88;
  * Keep this comfortably below SLIDE_SECONDS × 1000, or the next move starts
  * before the last one has settled.
  */
-export const SLIDE_TRANSITION_MS = 1000;
+export const SLIDE_TRANSITION_MS = 1800;
 
 /**
  * The shape of the slide movement — how it accelerates and slows.
@@ -207,7 +212,7 @@ export const SLIDE_TRANSITION_MS = 1000;
  *   cubic-bezier(0.4, 0, 0.2, 1)    gentle and neutral
  *   linear                          mechanical, constant speed
  */
-export const SLIDE_EASING = "cubic-bezier(0.76, 0, 0.24, 1)";
+export const SLIDE_EASING = "cubic-bezier(0.37, 0, 0.63, 1)";
 
 /**
  * How long one slow push-in of a picture takes, in milliseconds. Keeps a slide
@@ -218,7 +223,7 @@ export const SLIDE_EASING = "cubic-bezier(0.76, 0, 0.24, 1)";
  *
  * Turned off automatically for anyone with reduced-motion enabled.
  */
-export const KEN_BURNS_MS = 18000;
+export const KEN_BURNS_MS = 24000;
 
 /**
  * How dim a slide looks while it waits its turn, from 0 to 1. The active slide
