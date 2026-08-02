@@ -113,16 +113,45 @@ export const LEAD_SECONDS = 4;
 export const LEAD_IMAGE_COUNT = 4;
 
 /**
- * How long the sideways sweep takes, in milliseconds. Deliberately slower than
- * the vertical move so there is time to take the picture in as it passes.
+ * The sweep is not one rigid movement — the picture's two edges travel
+ * separately, which is what makes it stretch and settle rather than slide.
  *
- * Higher → a longer, more languid sweep (3000 is very slow).
+ * The leading edge (the one heading for the left of the screen) runs ahead on
+ * CAROUSEL_MS. The trailing edge follows on CAROUSEL_TRAIL_MS. While the lead
+ * is ahead the picture is wider than it starts or ends, so it appears to grow
+ * into place, and the crop of the picture inside it shifts as it goes.
+ *
+ * Set both durations and both easings the same and you get the old rigid
+ * slide back. The further apart they are, the more it stretches.
+ *
+ * Higher → a longer, more languid sweep (3000+ is very slow).
  * Lower  → the picture snaps across.
  *
- * Keep it below SETTLE_SECONDS × 1000, or the sweep will not have finished
+ * Keep BOTH below SETTLE_SECONDS × 1000, or the sweep will not have finished
  * before the slide moves on.
  */
 export const CAROUSEL_MS = 2200;
+
+/**
+ * How long the trailing edge takes. Longer than CAROUSEL_MS so the picture is
+ * still catching up with itself after the front has arrived.
+ *
+ * Higher → the stretch hangs open for longer and settles later.
+ * Lower  → tighter. Equal to CAROUSEL_MS removes the stretch entirely.
+ */
+export const CAROUSEL_TRAIL_MS = 2900;
+
+/**
+ * Easing for the leading edge. An ease-out shape gets it moving immediately,
+ * which is what opens the stretch early in the sweep.
+ */
+export const CAROUSEL_LEAD_EASING = "cubic-bezier(0.33, 1, 0.68, 1)";
+
+/**
+ * Easing for the trailing edge. A symmetric ease-in-out holds it back through
+ * the first half — that lag is the stretch — then brings it in smoothly.
+ */
+export const CAROUSEL_TRAIL_EASING = "cubic-bezier(0.76, 0, 0.24, 1)";
 
 /**
  * How long the landed 60/40 split holds before the ordinary vertical slides

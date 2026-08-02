@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  CAROUSEL_LEAD_EASING,
   CAROUSEL_MS,
+  CAROUSEL_TRAIL_EASING,
+  CAROUSEL_TRAIL_MS,
   COUNTDOWN_PANEL_PERCENT,
   FINAL_TITLE,
   HORIZONTAL_AT_SECONDS,
@@ -26,6 +29,8 @@ import {
 import styles from "./countdown.module.css";
 
 const LEAD_MS = LEAD_SECONDS * 1000;
+/** The sweep is over once the slower of the two edges has landed. */
+const SWEEP_MS = Math.max(CAROUSEL_MS, CAROUSEL_TRAIL_MS);
 const REVEAL_SECONDS = LEAD_SECONDS + SETTLE_SECONDS;
 const REVEAL_MS = REVEAL_SECONDS * 1000;
 const IMAGES_PER_REVEAL = LEAD_IMAGE_COUNT + SETTLE_IMAGE_COUNT;
@@ -117,10 +122,10 @@ function imageSlotAt(withinMs: number) {
   }
 
   // The travelling picture stays put until the sweep is done.
-  const sweptMs = withinMs - LEAD_MS - CAROUSEL_MS;
+  const sweptMs = withinMs - LEAD_MS - SWEEP_MS;
   if (sweptMs < 0) return LEAD_IMAGE_COUNT - 1;
 
-  const each = (REVEAL_MS - LEAD_MS - CAROUSEL_MS) / SETTLE_IMAGE_COUNT;
+  const each = (REVEAL_MS - LEAD_MS - SWEEP_MS) / SETTLE_IMAGE_COUNT;
   return (
     LEAD_IMAGE_COUNT +
     Math.min(SETTLE_IMAGE_COUNT - 1, Math.floor(sweptMs / each))
@@ -318,17 +323,13 @@ export default function Countdown({
   const imageSlot = active?.reveal ? imageSlotAt(withinMs) : 0;
 
   /**
-   * How far the carousel track has travelled, as a percentage of the screen.
-   * It sits at 0 through the lead-in, then moves left by exactly one number
-   * panel — which puts the picture on the left and brings the second number
-   * panel in from the right.
-   *
-   * Slides already passed stay swept so none of them rewinds on the way out.
+   * Whether a carousel slide has swept yet. Slides already passed stay swept
+   * so none of them rewinds on the way out.
    */
-  const trackOffsetFor = (i: number) => {
-    if (i < slideIndex) return -COUNTDOWN_PANEL_PERCENT;
-    if (i > slideIndex) return 0;
-    return withinMs < LEAD_MS ? 0 : -COUNTDOWN_PANEL_PERCENT;
+  const hasSwept = (i: number) => {
+    if (i < slideIndex) return true;
+    if (i > slideIndex) return false;
+    return withinMs >= LEAD_MS;
   };
 
   return (
@@ -360,7 +361,10 @@ export default function Countdown({
               "--slide-ease": SLIDE_EASING,
               "--slide-dim": SLIDE_DIM,
               "--ken-burns-ms": `${KEN_BURNS_MS}ms`,
-              "--carousel-ms": `${CAROUSEL_MS}ms`,
+              "--lead-ms": `${CAROUSEL_MS}ms`,
+              "--lead-ease": CAROUSEL_LEAD_EASING,
+              "--trail-ms": `${CAROUSEL_TRAIL_MS}ms`,
+              "--trail-ease": CAROUSEL_TRAIL_EASING,
               "--fade-ms": `${IMAGE_FADE_MS}ms`,
               transform: `translateY(calc(-${slideIndex} * var(--slide-h)))`,
             } as React.CSSProperties
@@ -396,9 +400,18 @@ export default function Countdown({
             // At zero everything collapses to a single full-bleed picture, so
             // a sweep slide drops back to the ordinary structure to get there.
             if (slide.reveal && !ended) {
-              // A track of number / picture / number that slides left by one
-              // number-panel width. Mid-sweep both number panels are partly on
-              // screen, which is what puts an edge of the count at each side.
+              // The picture is defined by where its two edges are, not by a
+              // width. Each edge has its own timing, so while the leading one
+              // is ahead the picture is stretched wider than it starts or
+              // ends — that is the morph. The number panels are simply
+              // whatever is left either side, so both show as slivers while
+              // the stretch is open.
+              const swept = hasSwept(i);
+              const leading = swept ? 0 : COUNTDOWN_PANEL_PERCENT;
+              const trailing = swept
+                ? IMAGE_PANEL_PERCENT
+                : COUNTDOWN_PANEL_PERCENT + IMAGE_PANEL_PERCENT;
+
               return (
                 <div
                   key={i}
@@ -406,17 +419,12 @@ export default function Countdown({
                     i === slideIndex ? styles.slideActive : ""
                   }`}
                 >
-                  <div
-                    className={styles.carousel}
-                    style={{
-                      transform: `translateX(${trackOffsetFor(i)}%)`,
-                    }}
-                  >
+                  <div className={styles.carousel}>
                     <div
-                      className={styles.carouselNumber}
+                      className={`${styles.carouselNumber} ${styles.numberOut}`}
                       style={{
                         left: 0,
-                        width: `${COUNTDOWN_PANEL_PERCENT}%`,
+                        right: `${100 - leading}%`,
                         background: slide.color,
                       }}
                     >
@@ -425,17 +433,17 @@ export default function Countdown({
                     <div
                       className={styles.carouselImage}
                       style={{
-                        left: `${COUNTDOWN_PANEL_PERCENT}%`,
-                        width: `${IMAGE_PANEL_PERCENT}%`,
+                        left: `${leading}%`,
+                        right: `${100 - trailing}%`,
                       }}
                     >
                       {pictures}
                     </div>
                     <div
-                      className={styles.carouselNumber}
+                      className={`${styles.carouselNumber} ${styles.numberIn}`}
                       style={{
-                        left: `${COUNTDOWN_PANEL_PERCENT + IMAGE_PANEL_PERCENT}%`,
-                        width: `${COUNTDOWN_PANEL_PERCENT}%`,
+                        left: `${trailing}%`,
+                        right: 0,
                         background: slide.color,
                       }}
                     >

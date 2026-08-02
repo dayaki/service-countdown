@@ -213,18 +213,23 @@
 
 /* --- the sideways sweep ------------------------------------------------------
 
-   A carousel slide is a track wider than the screen holding three panels:
+   Three panels — number, picture, number — positioned by their edges rather
+   than their widths. The picture's leading and trailing edges each get their
+   own duration and easing, so the lead pulls away first and the trail catches
+   up late:
 
-     │◀───── screen ─────▶│
-     ┌─────────┬────────────┬─────────┐
-     │ number  │  picture   │ number  │      track at rest
-     └─────────┴────────────┴─────────┘
-     0        50%         110%      160%
+     at rest      │ number  │      picture      │        50 / 110
+     mid-sweep    │n│         picture         │n│         6 /  85   ← stretched
+     landed       │      picture      │ number │         0 /  60
 
-   Sliding it left by one number-panel width puts the picture on the left and
-   brings the second number panel in from the right. Halfway through, both
-   number panels are partly on screen — which is what shows an edge of the
-   count at each side rather than one panel resizing. */
+   Because the picture is wider mid-sweep than at either end, it reads as
+   growing into place rather than sliding past, and the background crop shifts
+   with it. Both number panels are on screen while the stretch is open, which
+   is what shows an edge of the count at each side.
+
+   Edges animate layout rather than transform. That is the point — a transform
+   would move the picture rigidly and could not change its shape. Only three
+   elements are involved, for a couple of seconds, a few times a service. */
 .slideSweep {
   position: relative;
   overflow: hidden;
@@ -233,8 +238,6 @@
 .carousel {
   position: absolute;
   inset: 0;
-  transition: transform var(--carousel-ms) var(--slide-ease);
-  will-change: transform;
 }
 
 .carouselNumber,
@@ -242,6 +245,22 @@
   position: absolute;
   top: 0;
   bottom: 0;
+}
+
+.carouselImage {
+  transition:
+    left var(--lead-ms) var(--lead-ease),
+    right var(--trail-ms) var(--trail-ease);
+}
+
+/* The outgoing number is bounded by the leading edge, the incoming one by the
+   trailing edge, so each follows the picture side it touches. */
+.numberOut {
+  transition: right var(--lead-ms) var(--lead-ease);
+}
+
+.numberIn {
+  transition: left var(--trail-ms) var(--trail-ease);
 }
 
 .carouselNumber {
@@ -340,7 +359,10 @@
   .slideshow,
   .slide,
   .imagePanel,
-  .numberPanel {
+  .numberPanel,
+  .carouselImage,
+  .numberOut,
+  .numberIn {
     transition-duration: 1ms;
   }
 }
