@@ -77,13 +77,17 @@ function makeBag<T>(items: T[]) {
  * Builds the whole run up front so each slide's picture and colour are fixed
  * the moment the slideshow starts — re-rolling per render would reshuffle the
  * screen on every tick.
+ *
+ * Pictures run in filename order, same as the videos, so numbered prefixes
+ * control the sequence. Fewer pictures than slides wraps back to the first,
+ * which is the only way an image repeats — see SLIDE_SECONDS in config.ts for
+ * how many pictures a clean run needs. Colours are still drawn at random.
  */
 function buildSlides(images: string[]): Slide[] {
-  const drawImage = makeBag(images);
   const drawColor = makeBag(SLIDE_COLORS);
 
   return Array.from({ length: SLIDE_COUNT }, (_, i) => ({
-    image: drawImage(),
+    image: images.length > 0 ? images[i % images.length] : null,
     color: drawColor() ?? SLIDE_COLORS[0],
     imageFirst: i % 2 === 0,
   }));

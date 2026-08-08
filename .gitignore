@@ -22,3 +22,7 @@ next-env.d.ts
 # Videos are also 672MB total, four of them over GitHub's 100MB file limit.
 public/videos/
 public/images/
+
+# Past services' clips, kept on disk to swap back in. 3.2GB, and thirteen of
+# them are over GitHub's 100MB limit on their own.
+public/video_bks/

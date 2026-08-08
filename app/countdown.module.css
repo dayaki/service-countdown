@@ -80,8 +80,8 @@
 
 .countdownWrapper {
   position: absolute;
-  top: 50%;
-  right: 60px;
+  top: 40%;
+  right: 40px;
   transform: translateY(-50%);
   text-align: right;
   opacity: 0;
@@ -139,13 +139,15 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: #fff;
-  font-size: 5rem;
+  font-size: 10rem;
   font-weight: 900;
   text-align: center;
   width: 60%;
   opacity: 0;
   transition: opacity 1.5s ease-in-out;
   text-shadow: 2px 2px 12px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-display), sans-serif;
+  line-height: 0.8;
 }
 
 .finalTitle.visible {
@@ -245,7 +247,7 @@
 .slideNumber {
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
-  font-size: 34vh;
+  font-size: 44vh;
   line-height: 1;
   color: #fff;
   text-shadow: 2px 2px 16px rgba(0, 0, 0, 0.35);

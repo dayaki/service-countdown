@@ -48,10 +48,16 @@ export const SLIDESHOW_START_SECONDS = 60;
  * Higher → slower, calmer slideshow, fewer slides, each picture gets longer.
  * Lower  → busier and more urgent, more slides, each picture gets a glance.
  *
- * Slides needed is SLIDESHOW_START_SECONDS ÷ this, so at 60s and 5s that is
- * 12 slides. With 10 pictures in the folder each shows about once.
+ * Pictures play in filename order, one per slide, wrapping back to the first
+ * once they run out. So the folder needs
+ *
+ *     ⌈ SLIDESHOW_START_SECONDS ÷ SLIDE_SECONDS ⌉ + 1
+ *
+ * pictures for a run with no repeats — at 60s and 4s that is 16. The +1 is the
+ * strip peeking below the last slide, which is on screen even though it never
+ * gets a turn of its own.
  */
-export const SLIDE_SECONDS = 5;
+export const SLIDE_SECONDS = 4;
 
 /**
  * How much of the screen height the active slide takes, as a percentage. The
@@ -120,11 +126,11 @@ export const SLIDE_DIM = 0.55;
  * (worst is teal at 5.47:1). Pale colours will wash the numbers out.
  */
 export const SLIDE_COLORS = [
-  "#1E3A8A", // deep blue
-  "#0F766E", // teal
+  "#3273f2",
+  "#ca6b71",
   "#14532D", // forest
   "#581C87", // royal purple
-  "#9F1239", // crimson
+  "#5cc8bf",
   "#9A3412", // burnt orange
   "#155E75", // petrol
   "#3F3F46", // graphite

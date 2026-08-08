@@ -34,7 +34,7 @@ export function readVideos() {
   return readMediaDir("videos", VIDEO_EXT);
 }
 
-/** Slideshow stills, drawn at random rather than in order. */
+/** Slideshow stills, shown in filename order like the clips. */
 export function readImages() {
   return readMediaDir("images", IMAGE_EXT);
 }
