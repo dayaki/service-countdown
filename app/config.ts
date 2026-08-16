@@ -4,10 +4,11 @@
  *
  * How a service runs:
  *
- *   1. Click anywhere         → video starts (audio needs the click)
- *   2. Video plays            → big MM:SS timer, top right
- *   3. SLIDESHOW_START_SECONDS → video fades out, split slideshow takes over
- *   4. Zero                   → last picture fills the screen, title fades in
+ *   1. Click anywhere          → video starts (audio needs the click)
+ *   2. Video plays             → big MM:SS timer, top right
+ *   3. OUTRO_START_SECONDS     → closing clip crossfades in over the playlist
+ *   4. SLIDESHOW_START_SECONDS → video fades out, split slideshow takes over
+ *   5. Zero                    → last picture fills the screen, title fades in
  *
  * The slideshow is a vertical stack. Every slide is an even split, picture on
  * one side and the number on the other, holding for SLIDE_SECONDS before the
@@ -15,7 +16,7 @@
  *
  *   ┌─────┬──────┐  holds SLIDE_SECONDS, then slides up.
  *   │ IMG │  54  │  Sides alternate on each slide.
- *   └─────┴──────┘
+ *   └─────┴──────┘  Spare pictures pair up two to a slide — see SLIDE_SECONDS.
  *
  * To rehearse the last minute without waiting, add `?seconds=70` to the URL.
  */
@@ -43,21 +44,76 @@ export const COUNTDOWN_SECONDS = 25 * 60;
 export const SLIDESHOW_START_SECONDS = 60;
 
 /**
+ * Seconds remaining when the closing clip takes over from the playlist.
+ *
+ * Higher → the outro starts earlier, so it has to be a longer clip.
+ * Lower  → more music video, shorter outro.
+ *
+ * The outro is `public/videos/outro.mp4` — any file in that folder named
+ * `outro` is held back from the playlist and cued by the clock instead, so the
+ * numbered clips play in order and this one always lands last.
+ *
+ * Cut it to OUTRO_START_SECONDS − SLIDESHOW_START_SECONDS long and it finishes
+ * exactly as the slideshow takes over: at 120 and 60, that is one minute. A
+ * shorter clip holds on its last frame until then; a longer one is still
+ * playing when the slideshow fades over it, which costs the tail but is not a
+ * glitch. Must stay above SLIDESHOW_START_SECONDS, or the slideshow is already
+ * running and the outro is never seen.
+ */
+export const OUTRO_START_SECONDS = 2 * 60;
+
+/**
+ * How long the handover to the outro takes, in milliseconds. The picture
+ * dissolves and the playlist audio fades to silence over the same span.
+ *
+ * Higher → a longer, softer dissolve (2000 is a slow blend of the two clips).
+ * Lower  → closer to a straight cut (0 is a hard cut, sound and all).
+ */
+export const OUTRO_CROSSFADE_MS = 800;
+
+/**
  * How long a slide holds before the stack moves up to the next.
  *
  * Higher → slower, calmer slideshow, fewer slides, each picture gets longer.
  * Lower  → busier and more urgent, more slides, each picture gets a glance.
  *
- * Pictures play in filename order, one per slide, wrapping back to the first
- * once they run out. So the folder needs
+ * Pictures play in filename order, read straight through the run. The number of
+ * slides is
  *
  *     ⌈ SLIDESHOW_START_SECONDS ÷ SLIDE_SECONDS ⌉ + 1
  *
- * pictures for a run with no repeats — at 60s and 4s that is 16. The +1 is the
- * strip peeking below the last slide, which is on screen even though it never
- * gets a turn of its own.
+ * which at 60s and 4s is 16. The +1 is the strip peeking below the last slide,
+ * which is on screen even though it never gets a turn of its own.
+ *
+ * How many pictures that takes depends on how many are in the folder:
+ *
+ *   under 16   one each, wrapping back to the first — the only way one repeats
+ *   16         one each, no repeats
+ *   17 to 31   the spares are paired onto slides, evenly spread through the
+ *              run; a paired slide dissolves from one to the other mid-hold
+ *              (see PAIR_FADE_MS). 24 pictures pairs up every other slide.
+ *   over 31    the surplus is ignored — two on each of the 15 slides that get
+ *              a turn, plus one on the peek slide, is all a minute holds
  */
 export const SLIDE_SECONDS = 4;
+
+/**
+ * How long the dissolve between the two pictures of a paired slide takes, in
+ * milliseconds.
+ *
+ * Higher → a longer, softer blend, less still time for each picture.
+ * Lower  → closer to a straight cut between the two.
+ *
+ * It waits for the stack to finish gliding and then sits in the middle of the
+ * stillness that follows, so nothing is moving underneath it — a dissolve run
+ * during the travel reads as a jump rather than a blend. The room it has is
+ * SLIDE_SECONDS × 1000 − SLIDE_TRANSITION_MS, which at 4s and 1800ms is 2.2s;
+ * at 1000 that leaves each picture a still 600ms of its own. Fill the whole
+ * 2.2s and the blend runs corner to corner with no still moment at all.
+ *
+ * Only ever seen when the folder holds more pictures than there are slides.
+ */
+export const PAIR_FADE_MS = 1000;
 
 /**
  * How much of the screen height the active slide takes, as a percentage. The
@@ -100,8 +156,6 @@ export const SLIDE_EASING = "cubic-bezier(0.37, 0, 0.63, 1)";
  *
  * Higher → drift is slower and subtler (40000 is barely perceptible).
  * Lower  → more obvious movement (8000 starts to feel restless).
- *
- * Turned off automatically for anyone with reduced-motion enabled.
  */
 export const KEN_BURNS_MS = 24000;
 

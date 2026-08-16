@@ -26,6 +26,20 @@
   background: #000;
 }
 
+/* The closing clip is stacked over the playlist and dissolved in on its cue,
+   so the handover never shows a black frame while it loads. It stays on top
+   from then on — everything under it has been paused and silenced. */
+.outro {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--outro-ms) ease-in-out;
+}
+
+.outro.outroVisible {
+  opacity: 1;
+}
+
 .overlay {
   position: fixed;
   top: 0;
@@ -213,6 +227,13 @@
   background-color: #111;
 }
 
+/* One picture's worth of the panel. Only ever more than one of these when a
+   slide has been given a pair to dissolve between. */
+.imageLayer {
+  position: absolute;
+  inset: 0;
+}
+
 /* A slow push in and out keeps a slide from ever looking entirely still.
    Inset past the edges leaves room to drift without exposing the panel.
 
@@ -226,6 +247,32 @@
   background-position: center;
   background-repeat: no-repeat;
   animation: kenBurns var(--ken-burns-ms) ease-in-out infinite alternate;
+}
+
+/* A slide holding two pictures stacks the second over the first and dissolves
+   it in part way through the hold, so both are seen in the window the slide
+   actually has the screen. --pair-fade-delay is what places it there, past the
+   end of the stack's travel — see PAIR_FADE_DELAY_MS in countdown.tsx. */
+.imageSecond {
+  opacity: 0;
+}
+
+/* An animation, not a transition: the first slide already has its turn on the
+   frame it mounts, and a transition set on the initial style never runs, so its
+   second picture would replace the first outright instead of dissolving.
+
+   Linear, because the picture underneath is fully opaque — the blend is an even
+   lerp between the two, and easing it only rushes the middle of the dissolve
+   and makes it read as a cut. */
+.imageRevealed {
+  animation: pairDissolve var(--pair-fade-ms) linear var(--pair-fade-delay)
+    forwards;
+}
+
+@keyframes pairDissolve {
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes kenBurns {
@@ -265,17 +312,4 @@
 /* The final slide is the only thing on screen, so it should not stay dimmed. */
 .slideshowEnded .slide {
   filter: brightness(1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .imageDrift {
-    animation: none;
-  }
-
-  .slideshow,
-  .slide,
-  .imagePanel,
-  .numberPanel {
-    transition-duration: 1ms;
-  }
 }
