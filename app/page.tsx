@@ -1,6 +1,6 @@
 import Countdown from "./countdown";
 import { COUNTDOWN_SECONDS } from "./config";
-import { readImages, readVideos } from "./media";
+import { readImages, readOutro, readVideos } from "./media";
 
 // Media is read per request rather than baked in at build time, so dropping new
 // clips or stills into public/ takes effect on a refresh with no rebuild.
@@ -35,6 +35,7 @@ export default async function Home({
   return (
     <Countdown
       videos={readVideos()}
+      outro={readOutro()}
       images={readImages()}
       seconds={parseSeconds(seconds) ?? COUNTDOWN_SECONDS}
     />
