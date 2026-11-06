@@ -209,7 +209,7 @@ export const SLIDE_COLORS = [
 export const MAX_CROP = 0.15;
 
 /** Small line above the big timer during the video phase. */
-export const SUBLABEL = "Service starts:";
+export const SUBLABEL = "Last Youth Service of the Year";
 
 /** Shown over the last picture once the countdown reaches zero. */
 export const FINAL_TITLE = "Welcome to Church";
