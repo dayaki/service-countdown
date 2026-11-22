@@ -1,0 +1,236 @@
+/* The body is locked to the viewport for the countdown (see globals.css), so
+   setup scrolls inside its own fixed layer rather than the page. */
+.page {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: #0b0b0c;
+  color: #f4f4f5;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.column {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 56px 20px 80px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-family: var(--font-display), sans-serif;
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.lede {
+  margin-top: 12px;
+  color: #a1a1aa;
+}
+
+.section {
+  padding: 24px 0;
+  border-top: 1px solid #27272a;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.sectionHead h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.optional {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #71717a;
+}
+
+.meta {
+  color: #a1a1aa;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.help {
+  margin-top: 6px;
+  color: #a1a1aa;
+  font-size: 0.875rem;
+}
+
+.warning {
+  margin-top: 10px;
+  color: #fbbf24;
+  font-size: 0.875rem;
+}
+
+.status {
+  color: #a1a1aa;
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.button,
+.buttonSecondary,
+.primary {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.button {
+  padding: 9px 16px;
+  background: #f4f4f5;
+  color: #0b0b0c;
+  border: 1px solid #f4f4f5;
+}
+
+.button:hover {
+  background: #d4d4d8;
+}
+
+.buttonSecondary {
+  padding: 9px 16px;
+  background: transparent;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+}
+
+.buttonSecondary:hover {
+  border-color: #71717a;
+}
+
+.button:focus-within,
+.buttonSecondary:focus-within,
+.primary:focus-visible {
+  outline: 2px solid #3273f2;
+  outline-offset: 2px;
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #7aa5f8;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fileList {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+}
+
+.fileList summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.fileList ol {
+  margin-top: 8px;
+  padding-left: 28px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.field {
+  margin-top: 16px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  color: #d4d4d8;
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.number,
+.text {
+  background: #18181b;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+}
+
+.number {
+  width: 110px;
+  font-variant-numeric: tabular-nums;
+}
+
+.text {
+  width: 100%;
+}
+
+.number:focus,
+.text:focus {
+  outline: none;
+  border-color: #3273f2;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid #27272a;
+}
+
+.primary {
+  justify-content: center;
+  padding: 14px 20px;
+  font-size: 1rem;
+  background: #3273f2;
+  color: #fff;
+  border: none;
+}
+
+.primary:hover {
+  background: #255fd4;
+}
+
+.loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #71717a;
+  font-size: 0.875rem;
+}

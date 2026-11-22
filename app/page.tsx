@@ -1,10 +1,4 @@
-import Countdown from "./countdown";
-import { COUNTDOWN_SECONDS } from "./config";
-import { readImages, readOutro, readVideos } from "./media";
-
-// Media is read per request rather than baked in at build time, so dropping new
-// clips or stills into public/ takes effect on a refresh with no rebuild.
-export const dynamic = "force-dynamic";
+import Service from "./service";
 
 /** A day, past which an override is more likely a typo than an intent. */
 const MAX_OVERRIDE_SECONDS = 24 * 60 * 60;
@@ -25,6 +19,10 @@ function parseSeconds(raw: string | string[] | undefined) {
   return seconds;
 }
 
+/**
+ * Media is chosen in the browser and never reaches the server, so the server's
+ * only job is passing through the rehearsal override.
+ */
 export default async function Home({
   searchParams,
 }: {
@@ -32,12 +30,5 @@ export default async function Home({
 }) {
   const { seconds } = await searchParams;
 
-  return (
-    <Countdown
-      videos={readVideos()}
-      outro={readOutro()}
-      images={readImages()}
-      seconds={parseSeconds(seconds) ?? COUNTDOWN_SECONDS}
-    />
-  );
+  return <Service secondsOverride={parseSeconds(seconds)} />;
 }

@@ -30,7 +30,7 @@ const display = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CW 2026 Countdown",
+  title: "Service Countdown",
 };
 
 export const viewport: Viewport = {

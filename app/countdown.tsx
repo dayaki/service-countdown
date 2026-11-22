@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  FINAL_TITLE,
   KEN_BURNS_MS,
   MAX_CROP,
   OUTRO_CROSSFADE_MS,
-  OUTRO_START_SECONDS,
   PAIR_FADE_MS,
   SLIDE_COLORS,
   SLIDE_DIM,
@@ -15,7 +13,6 @@ import {
   SLIDE_SECONDS,
   SLIDE_TRANSITION_MS,
   SLIDESHOW_START_SECONDS,
-  SUBLABEL,
 } from "./config";
 import styles from "./countdown.module.css";
 
@@ -34,7 +31,8 @@ const OUTRO_PRELOAD_LEAD_SECONDS = 30;
  * plus one extra that only ever exists to be the strip peeking below the last
  * real slide.
  */
-const SLIDE_COUNT = Math.ceil(SLIDESHOW_START_SECONDS / SLIDE_SECONDS) + 1;
+export const SLIDE_COUNT =
+  Math.ceil(SLIDESHOW_START_SECONDS / SLIDE_SECONDS) + 1;
 
 /**
  * Slides that get a turn as the active slide — every one but the trailing peek
@@ -47,7 +45,7 @@ const TURN_TAKING_SLIDES = SLIDE_COUNT - 1;
  * Most pictures a run can show: two on every slide that gets a turn, plus the
  * one on the peek slide.
  */
-const IMAGE_CAPACITY = TURN_TAKING_SLIDES * 2 + 1;
+export const IMAGE_CAPACITY = TURN_TAKING_SLIDES * 2 + 1;
 
 /**
  * When a paired slide starts its dissolve, measured from the moment it takes
@@ -190,11 +188,20 @@ export default function Countdown({
   outro,
   images,
   seconds,
+  outroStartSeconds,
+  sublabel,
+  finalTitle,
+  onExit,
 }: {
   videos: string[];
   outro: string | null;
   images: string[];
   seconds: number;
+  outroStartSeconds: number;
+  sublabel: string;
+  finalTitle: string;
+  /** Back to setup. Only offered before the start, never mid-service. */
+  onExit: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const outroRef = useRef<HTMLVideoElement>(null);
@@ -215,13 +222,13 @@ export default function Countdown({
   const inSlideshow = started && secondsLeft <= slideshowStart;
 
   const inOutro =
-    started && outro !== null && secondsLeft <= OUTRO_START_SECONDS;
+    started && outro !== null && secondsLeft <= outroStartSeconds;
   // An element with a src buffers on its own, so withholding the src is what
   // keeps the download out of the playlist's way until the lead comes round.
   const outroCued =
     started &&
     outro !== null &&
-    secondsLeft <= OUTRO_START_SECONDS + OUTRO_PRELOAD_LEAD_SECONDS;
+    secondsLeft <= outroStartSeconds + OUTRO_PRELOAD_LEAD_SECONDS;
 
   const measureFit = useCallback(() => {
     const next = fitFor(videoRef.current);
@@ -341,6 +348,25 @@ export default function Countdown({
     if (ended || inOutro) return;
     setVideoIndex((index) => (index + 1 < videos.length ? index + 1 : index));
   }, [ended, inOutro, videos.length]);
+
+  // Escape is the way back to setup while the screen is still black. After the
+  // start it is left to the browser, where it only leaves fullscreen.
+  useEffect(() => {
+    if (started) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.fullscreenElement) onExit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [started, onExit]);
+
+  const handleExit = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onExit();
+    },
+    [onExit],
+  );
 
   const toggleFullscreen = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -486,12 +512,25 @@ export default function Countdown({
           Fullscreen
         </button>
 
+        {!started && (
+          <>
+            <button
+              type="button"
+              className={styles.setupBtn}
+              onClick={handleExit}
+            >
+              ← Setup
+            </button>
+            <div className={styles.startHint}>Click anywhere to start</div>
+          </>
+        )}
+
         <div
           className={`${styles.countdownWrapper} ${
             started && !inSlideshow ? styles.visible : ""
           }`}
         >
-          <div className={styles.countdownSublabel}>{SUBLABEL}</div>
+          <div className={styles.countdownSublabel}>{sublabel}</div>
           <div className={styles.countdownTimer}>
             {formatTime(secondsLeft)
               .split("")
@@ -507,7 +546,7 @@ export default function Countdown({
         </div>
 
         <div className={`${styles.finalTitle} ${ended ? styles.visible : ""}`}>
-          {FINAL_TITLE}
+          {finalTitle}
         </div>
       </div>
     </>

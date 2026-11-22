@@ -19,10 +19,14 @@
  *   └─────┴──────┘  Spare pictures pair up two to a slide — see SLIDE_SECONDS.
  *
  * To rehearse the last minute without waiting, add `?seconds=70` to the URL.
+ *
+ * Videos, pictures and the four values marked "setup default" below are chosen
+ * on the setup screen and remembered by each browser. The values here are only
+ * what a browser starts with before anyone has changed them.
  */
 
 /**
- * Total countdown length, in seconds.
+ * Total countdown length, in seconds. Setup default.
  *
  * Higher → longer wait before the service starts.
  * Lower  → shorter.
@@ -44,14 +48,15 @@ export const COUNTDOWN_SECONDS = 25 * 60;
 export const SLIDESHOW_START_SECONDS = 60;
 
 /**
- * Seconds remaining when the closing clip takes over from the playlist.
+ * Seconds remaining when the closing clip takes over from the playlist. Setup
+ * default.
  *
  * Higher → the outro starts earlier, so it has to be a longer clip.
  * Lower  → more music video, shorter outro.
  *
- * The outro is `public/videos/outro.mp4` — any file in that folder named
- * `outro` is held back from the playlist and cued by the clock instead, so the
- * numbered clips play in order and this one always lands last.
+ * The outro is the clip picked as the closing clip in setup — or any video
+ * named `outro` picked with the playlist, which is moved there. It is cued by
+ * the clock instead of queued, so it always lands last.
  *
  * Cut it to OUTRO_START_SECONDS − SLIDESHOW_START_SECONDS long and it finishes
  * exactly as the slideshow takes over: at 120 and 60, that is one minute. A
@@ -199,7 +204,7 @@ export const SLIDE_COLORS = [
  *          shows the whole frame).
  *
  * Every clip is measured against the screen shape on load, so this works for
- * whatever gets dropped into public/videos.
+ * whatever videos get picked in setup.
  *
  * 0.15 sits in the gap between the two cases that actually occur: a 16:9 clip
  * on a 16:10-ish laptop crops 10–14% (worth absorbing, the alternative is bars
@@ -208,8 +213,8 @@ export const SLIDE_COLORS = [
  */
 export const MAX_CROP = 0.15;
 
-/** Small line above the big timer during the video phase. */
 export const SUBLABEL = "Last Youth Service of the Year";
+/** Small line above the big timer during the video phase. Setup default. */
 
-/** Shown over the last picture once the countdown reaches zero. */
+/** Shown over the last picture once the countdown reaches zero. Setup default. */
 export const FINAL_TITLE = "Welcome to Church";

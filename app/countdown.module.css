@@ -92,6 +92,43 @@
   pointer-events: none;
 }
 
+/* Present only before the start. Faint, because by then the screen may already
+   be on the projector — enough for the operator to find, not enough to read
+   from the room. */
+.setupBtn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.setupBtn:hover,
+.setupBtn:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.startHint {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
 .countdownWrapper {
   position: absolute;
   top: 34%;
