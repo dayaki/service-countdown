@@ -213,7 +213,7 @@ export const SLIDE_COLORS = [
  */
 export const MAX_CROP = 0.15;
 
-export const SUBLABEL = "Last Youth Service of the Year";
+export const SUBLABEL = "Service starts:";
 /** Small line above the big timer during the video phase. Setup default. */
 
 /** Shown over the last picture once the countdown reaches zero. Setup default. */
